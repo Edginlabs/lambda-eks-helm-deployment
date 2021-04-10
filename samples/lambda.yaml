@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Transform: AWS::Serverless-2016-10-31
+Description: Amazon EKS Helm Deployment
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: root
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - eks:*
+            Resource: '*'
+          - Effect: Allow
+            Action:
+            - logs:*
+            Resource: arn:aws:logs:*:*:*
+  Func:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:213096763263:applications/lambda-eks-helm-deployment
+        SemanticVersion: 3.2.0
+      Parameters: 
+        FunctionName: deploy-fn
+        LambdaRoleArn: !GetAtt LambdaExecutionRole.Arn
+      
+  Deploy22:
+    Type: Custom::Deploy
+    Properties:
+      ServiceToken: !GetAtt Func.Outputs.LambdaFuncArn
+      Atomic: 'true'
+      Chart: echo-server
+      ClusterName: 'jt-pro'
+      Namespace: default
+      Release: echo
+      Repository: https://ealenn.github.io/charts
+      Timeout: 299s
+      Wait: 'true'  
